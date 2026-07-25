@@ -11,5 +11,6 @@ export default defineConfig({
     sourcemap: true,
     shims: true, 
     // Diz a versão alvo do javascript que iremos utilizar
-    target: 'esnext'
+    target: 'esnext',
+    
 });
