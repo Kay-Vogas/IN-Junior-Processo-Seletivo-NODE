@@ -58,6 +58,7 @@ model Session{
   startTime DateTime @map("start_time")
   seats Seat[]
 
+  // Faz o relacionamento entre as tabelos com seus campos
   movieId Int @map("movie_id")
   movie Movie @relation(fields: [movieId],references: [id])
 
