@@ -1,48 +1,42 @@
-import {z} from 'zod'
-import { prisma } from '@/libs/prisma.js'
-import type { FastifyReply , FastifyRequest } from 'fastify'
-import { hash } from 'bcryptjs'
-import { env } from '@/env/index.js'
+import { z } from 'zod'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import { UserAlreadyExistsError } from '@/uses-cases/error/user-already-exists-error.js'
+import { makeRegisterUseCasa } from '@/uses-cases/factories/make-register-user-case.js'
+import { UserPresenter } from '@/http/presenters/user-presenter.js'
 
-export async function register(request: FastifyRequest,reply: FastifyReply){
-
+export async function register(request: FastifyRequest, reply: FastifyReply) {
+  try {
     // Usando o Zod para verificar o que usuário estará enviando no objeto
     const registerBodySchema = z.object({
-        name:z.string().trim().min(1).max(100),
-        username:z.string().trim().min(1).max(100),
-        email:z.email().trim().max(100),
-        password: z.string().min(8),
+      name: z.string().trim().min(1).max(100),
+      username: z.string().trim().min(1).max(100),
+      email: z.email().trim().max(100),
+      password: z.string().min(8),
     })
 
-    const {name,username,email,password} = registerBodySchema.parse(request.body)
+    // Transforma o body que vem em formato JSON para um objeto, porém com o "registerBodySchema"
+    // ele direciona para seu respectivo campo na ordem do objeto
+    const { name, username, email, password } = registerBodySchema.parse(
+      request.body,
+    )
 
-
-    //Verificação por query , para verificar os Emails e Usernames , pois devem ser unitários
-    const userWithSameEmailOrUsername = await prisma.user.findFirst({
-        where:{
-            OR:[
-                {username},
-                {email}
-            ]  
-        }           
+    const registerUserUseCase = makeRegisterUseCasa()
+    const { user } = await registerUserUseCase.execute({
+      username,
+      email,
+      name,
+      password,
     })
 
-    if(userWithSameEmailOrUsername){
-        return reply.status(409).send({message: 'Esse Email ou Username já está em uso'})
+    return reply.status(201).send(UserPresenter.toHTTP(user))
+  
+    } catch(error) {
+
+        if(error instanceof UserAlreadyExistsError){
+            return reply.status(409).send({menssage:error.message})
+        }   
+        
+        throw error
     }
 
-    //Criptografia da senha enviada pelo user
-    const passwordHash = await hash(password,env.HASH_SALT_ROUNDS)
-
-    const user = await prisma.user.create({
-        data: {
-            name,
-            username,
-            email,
-            passwordHash
-        },
-
-    })
-
-    return reply.status(201).send(user)
 }
