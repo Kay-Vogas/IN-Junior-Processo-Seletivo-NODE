@@ -34,7 +34,7 @@ export class RegisterUserUseCase{
             username
         )
 
-        if(!userWithSameEmailOrUsername){
+        if(userWithSameEmailOrUsername){
             throw new UserAlreadyExistsError()
         }
 
